@@ -46,6 +46,7 @@ from config import (  # noqa: E402
 from models import CheckResult, Dashboard  # noqa: E402
 from notify import Notifier  # noqa: E402
 from renderers.base import Renderer  # noqa: E402
+from renderers.epaper_renderer import EpaperRenderer  # noqa: E402
 from renderers.epaper_renderer_placeholder import (  # noqa: E402
     EpaperRendererPlaceholder,
 )
@@ -60,6 +61,8 @@ DEFAULT_CONFIG = "config.yaml"
 
 def build_renderer(display: DisplayConfig) -> Renderer:
     """Wählt den Renderer anhand der Konfiguration aus."""
+    if display.renderer == "epaper":
+        return EpaperRenderer(display)
     if display.renderer == "epaper_placeholder":
         return EpaperRendererPlaceholder(display)
     return TextRenderer()

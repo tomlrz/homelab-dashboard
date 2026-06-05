@@ -81,13 +81,23 @@ services:
 
 # --- Anzeige -----------------------------------------------------------------
 display:
-  # "text"             -> Ausgabe ins Terminal/Log (Standard, kein Display nötig)
-  # "epaper_placeholder" -> erzeugt eine Bild-Vorschau (epaper_preview.png) und
-  #                         ist Platzhalter für den späteren Waveshare-Treiber
+  # "text"               -> Ausgabe ins Terminal/Log (kein Display nötig)
+  # "epaper_placeholder" -> erzeugt nur eine Bild-Vorschau (epaper_preview.png)
+  # "epaper"             -> echtes Waveshare-B/W/R-Display (braucht epd_model)
   renderer: "text"
   rotation: 0     # 0 / 90 / 180 / 270 – Drehung fürs Display
-  width: 250      # Pixelbreite des späteren E-Ink-Displays
-  height: 122     # Pixelhöhe des späteren E-Ink-Displays
+  width: 250      # Pixelbreite (nur für "epaper_placeholder"; bei "epaper" liefert
+  height: 122     # Pixelhöhe    der Treiber die echte Auflösung selbst)
+
+  # --- nur für renderer: "epaper" (echtes Waveshare-Display) ---
+  # epd_model: muss zu deinem Panel passen. Beispiele:
+  #   epd7in5b_V2  = 7,5"  800×480 B/W/R
+  #   epd2in13b_V4 = 2,13" 250×122 B/W/R
+  #   epd2in9b_V3  = 2,9"  296×128 B/W/R
+  # epd_model: "epd7in5b_V2"
+  # waveshare_lib_path: Ordner, der das Paket "waveshare_epd" enthält, z.B. den
+  # python/lib-Ordner aus dem offiziellen Waveshare-Repo.
+  # waveshare_lib_path: "/home/tom/e-Paper/RaspberryPi_JetsonNano/python/lib"
   # E-Ink nur neu zeichnen, wenn sich der Status geändert hat (schont das Panel
   # und vermeidet ständiges Blinken). Antwortzeiten allein lösen kein Refresh aus.
   redraw_only_on_change: true

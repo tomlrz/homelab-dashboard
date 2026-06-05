@@ -1,0 +1,15 @@
+# Zusatz-Abhängigkeiten NUR für ein echtes Waveshare-E-Paper-Display
+# (renderer: "epaper"). Diese Pakete funktionieren ausschließlich auf dem
+# Raspberry Pi und werden für den Text-/Vorschau-Betrieb NICHT gebraucht.
+#
+# Installation auf dem Pi (im venv des Projekts):
+#   venv/bin/pip install -r requirements-epaper.txt
+#
+# Die eigentliche Waveshare-Bibliothek (Paket "waveshare_epd") wird NICHT über
+# pip installiert, sondern per display.waveshare_lib_path aus dem Waveshare-Repo
+# eingebunden (siehe README).
+
+spidev
+RPi.GPIO
+gpiozero
+lgpio

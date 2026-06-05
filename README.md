@@ -68,6 +68,8 @@ ausgeschlossen.
 │   ├── system_info.py           # Pi-Eigenstatus (Temp/Throttle/WLAN/Uptime)
 │   ├── notify.py                # Push via ntfy/Telegram/Gotify
 │   └── renderers/
+│       ├── _layout.py           # gemeinsames B/W/R-Zeichnen (Buffer + Vorschau)
+│       ├── epaper_renderer.py   # echtes Waveshare-Display (waveshare_epd)
 │       ├── base.py              # gemeinsame Renderer-Schnittstelle
 │       ├── text_renderer.py     # kompakte Text-/Terminalausgabe
 │       └── epaper_renderer_placeholder.py  # Platzhalter fürs E-Ink-Display
@@ -268,32 +270,82 @@ Alternativen: **Telegram** (Bot-Token + Chat-ID) oder **Gotify** (self-hosted).
 Felder dafür stehen kommentiert in `config.example.yaml`. Ein fehlgeschlagener
 Versand stört den Dienst nie – er wird nur geloggt.
 
-## Später das echte E-Ink-Display ergänzen
+## Echtes E-Ink-Display (Waveshare B/W/R)
 
 Der Renderer wird **allein über `config.yaml`** umgeschaltet
-(`display.renderer`). Die Check-Logik bleibt unangetastet.
+(`display.renderer`) – die Check-Logik bleibt unangetastet. Drei Modi:
 
-1. Displaymodell bestimmen (z.B. *Waveshare 2.13" V4 B/W/R*) und Auflösung in
-   `display.width` / `display.height` eintragen.
-2. Waveshare-Bibliothek installieren (Beispiel):
-   ```bash
-   sudo raspi-config        # SPI aktivieren (Interface Options -> SPI)
-   venv/bin/pip install RPi.GPIO spidev
-   # waveshare_epd-Modul aus dem offiziellen Repo ins Projekt legen/installieren
-   ```
-3. In [`src/renderers/epaper_renderer_placeholder.py`](src/renderers/epaper_renderer_placeholder.py)
-   die mit `# TODO(waveshare)` markierten Stellen ausfüllen:
-   - im Konstruktor `epdXinY.EPD()` initialisieren,
-   - in `render()` das fertige Pillow-Bild in schwarz-/rot-Buffer aufteilen und
-     per `self.epd.display(...)` senden, danach `self.epd.sleep()`.
-4. In `config.yaml` `renderer: "epaper_placeholder"` setzen (bzw. die Klasse
-   nach dem Ausfüllen z.B. in `EpaperRenderer` umbenennen) und testen.
+| `renderer`            | Zweck                                                    |
+|-----------------------|----------------------------------------------------------|
+| `text`                | Terminal/Log (Standard, kein Display)                    |
+| `epaper_placeholder`  | nur PNG-Vorschau `epaper_preview.png` (kein Display nötig)|
+| `epaper`              | **echtes Waveshare-B/W/R-Display** (`waveshare_epd`)      |
 
-Schon **vor** der Hardware erzeugt der Placeholder bei
-`renderer: epaper_placeholder` eine Bildvorschau `epaper_preview.png` – damit
-lässt sich das Layout am Schreibtisch prüfen.
+Der `epaper`-Renderer ([src/renderers/epaper_renderer.py](src/renderers/epaper_renderer.py))
+lädt den passenden Treiber dynamisch und zeichnet das Dashboard in zwei 1-Bit-
+Buffer (schwarz + rot), exakt wie es das Panel erwartet:
+`epd.init()` → `epd.display(getbuffer(black), getbuffer(red))` → `epd.sleep()`.
+Die gemeinsame Zeichen-Logik liegt in
+[src/renderers/_layout.py](src/renderers/_layout.py) – Vorschau und echtes Bild
+sind dadurch **pixelgleich**, und das Layout skaliert mit der Auflösung.
+
+### Einrichtung auf dem Pi
+
+```bash
+# 1. SPI aktivieren
+sudo raspi-config        # Interface Options -> SPI -> Yes -> reboot
+
+# 2. Display-Abhängigkeiten ins venv (nur Pi)
+venv/bin/pip install -r requirements-epaper.txt
+
+# 3. Zugriff auf SPI/GPIO für den Service-User
+sudo usermod -aG spi,gpio "$USER"   # danach neu einloggen
+```
+
+Die eigentliche Waveshare-Lib (`waveshare_epd`) wird **nicht** per pip
+installiert, sondern aus dem offiziellen Waveshare-Repo eingebunden. Du brauchst
+nur den Ordner, der das Paket `waveshare_epd` enthält (also den `…/python/lib`-
+Ordner). Finde ihn z.B. mit:
+```bash
+find / -name 'epd*.py' -path '*waveshare_epd*' 2>/dev/null | head
+```
+
+### Konfiguration
+
+```yaml
+display:
+  renderer: "epaper"
+  epd_model: "epd7in5b_V2"          # muss zu deinem Panel passen
+  waveshare_lib_path: "/home/tom/e-Paper/RaspberryPi_JetsonNano/python/lib"
+  rotation: 0                       # 0/90/180/270 je nach Einbaulage
+```
+
+`width`/`height` werden bei `epaper` **ignoriert** – die echte Auflösung liefert
+der Treiber selbst (`epd.width`/`epd.height`).
+
+### Testen
+
+```bash
+venv/bin/python src/main.py -v     # ein Lauf -> Bild aufs Panel
+```
+Häufige Modelle: `epd7in5b_V2` (7,5″ 800×480), `epd2in13b_V4` (2,13″ 250×122),
+`epd2in9b_V3` (2,9″ 296×128). Layout vorab ohne Hardware prüfen: `renderer:
+epaper_placeholder` mit passenden `width`/`height` → erzeugt `epaper_preview.png`.
 
 ## Troubleshooting
+
+**E-Paper bleibt leer / Treiber lädt nicht**
+- Log prüfen: `journalctl -u homelab-dashboard.service -n 40`. Steht dort
+  „Treiber … nicht ladbar"? → `waveshare_lib_path` zeigt nicht auf den Ordner mit
+  dem Paket `waveshare_epd`, oder `requirements-epaper.txt` ist nicht installiert.
+- `Permission denied` auf `/dev/spidev*` oder GPIO → Service-User ist nicht in den
+  Gruppen `spi`/`gpio`: `sudo usermod -aG spi,gpio "$USER"`, dann neu einloggen
+  (bzw. Pi neu starten). SPI aktiv? `ls /dev/spidev*`.
+- Anderes Programm belegt das Display? (Im Setup hier: alte „Kunstwerk"-App via
+  `rc.local`/`cron` deaktivieren und Prozess stoppen.)
+- Nichts ändert sich, obwohl ein Dienst ausfiel? `redraw_only_on_change` zeichnet
+  nur bei Statuswechsel neu – zum Erzwingen einmalig `heartbeat_minutes` klein
+  setzen oder `state.json` löschen.
 
 **Dienst wird als FAIL angezeigt, obwohl er läuft**
 - Stimmen `host`/`port`/`url` und ist der Pi im richtigen Netz/Subnetz?

@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 # Erlaubte Check-Typen
 VALID_TYPES = {"http", "https", "tcp", "ping"}
-VALID_RENDERERS = {"text", "epaper_placeholder"}
+VALID_RENDERERS = {"text", "epaper_placeholder", "epaper"}
 VALID_PROVIDERS = {"none", "ntfy", "telegram", "gotify"}
 
 
@@ -58,6 +58,11 @@ class DisplayConfig:
     # Statuswechsel. So bleibt die angezeigte Uhrzeit aktuell -> man erkennt, dass
     # das System noch läuft (eine alte Uhrzeit = es hängt). 0 = aus.
     heartbeat_minutes: int = 60
+    # Nur für renderer: "epaper" – echtes Waveshare-Display:
+    #   epd_model: z.B. "epd7in5b_V2" (muss zu deinem Panel passen)
+    #   waveshare_lib_path: Ordner, der das Paket "waveshare_epd" enthält
+    epd_model: Optional[str] = None
+    waveshare_lib_path: Optional[str] = None
 
 
 @dataclass
@@ -185,14 +190,21 @@ def _parse_display(raw: Optional[Dict[str, Any]]) -> DisplayConfig:
             f"Unbekannter renderer '{renderer}'. "
             f"Erlaubt: {', '.join(sorted(VALID_RENDERERS))}"
         )
-    return DisplayConfig(
+    cfg = DisplayConfig(
         renderer=renderer,
         rotation=int(raw.get("rotation", 0)),
         width=int(raw.get("width", 250)),
         height=int(raw.get("height", 122)),
         redraw_only_on_change=bool(raw.get("redraw_only_on_change", True)),
         heartbeat_minutes=max(0, int(raw.get("heartbeat_minutes", 60))),
+        epd_model=raw.get("epd_model"),
+        waveshare_lib_path=raw.get("waveshare_lib_path"),
     )
+    if renderer == "epaper" and not cfg.epd_model:
+        raise ConfigError(
+            "display.renderer='epaper' benötigt 'epd_model' (z.B. epd7in5b_V2)."
+        )
+    return cfg
 
 
 def _parse_monitoring(raw: Optional[Dict[str, Any]]) -> MonitoringConfig:
