@@ -63,6 +63,26 @@ class DisplayConfig:
     #   waveshare_lib_path: Ordner, der das Paket "waveshare_epd" enthält
     epd_model: Optional[str] = None
     waveshare_lib_path: Optional[str] = None
+    # Sicherheitsrand in Pixeln, falls ein Bilderrahmen/Passepartout die Ränder
+    # verdeckt. `margin` gilt für alle Seiten; einzelne Seiten überschreibbar.
+    margin: int = 0
+    margin_top: Optional[int] = None
+    margin_right: Optional[int] = None
+    margin_bottom: Optional[int] = None
+    margin_left: Optional[int] = None
+    # Zum Einstellen: dünnen Rahmen an der Safe-Area-Grenze zeichnen. Margin so
+    # hochdrehen, bis der Rahmen rundum sichtbar im Bilderrahmen sitzt.
+    show_safe_border: bool = False
+
+    def margins(self) -> Tuple[int, int, int, int]:
+        """(top, right, bottom, left) – Einzelseiten überschreiben `margin`."""
+        m = self.margin
+        return (
+            self.margin_top if self.margin_top is not None else m,
+            self.margin_right if self.margin_right is not None else m,
+            self.margin_bottom if self.margin_bottom is not None else m,
+            self.margin_left if self.margin_left is not None else m,
+        )
 
 
 @dataclass
@@ -182,6 +202,10 @@ def _validate_target(t: Target) -> None:
             raise ConfigError(f"'{t.name}': type=ping benötigt 'host'.")
 
 
+def _opt_int(value: Any) -> Optional[int]:
+    return int(value) if value is not None else None
+
+
 def _parse_display(raw: Optional[Dict[str, Any]]) -> DisplayConfig:
     raw = raw or {}
     renderer = str(raw.get("renderer", "text")).lower()
@@ -199,6 +223,12 @@ def _parse_display(raw: Optional[Dict[str, Any]]) -> DisplayConfig:
         heartbeat_minutes=max(0, int(raw.get("heartbeat_minutes", 60))),
         epd_model=raw.get("epd_model"),
         waveshare_lib_path=raw.get("waveshare_lib_path"),
+        margin=int(raw.get("margin", 0)),
+        margin_top=_opt_int(raw.get("margin_top")),
+        margin_right=_opt_int(raw.get("margin_right")),
+        margin_bottom=_opt_int(raw.get("margin_bottom")),
+        margin_left=_opt_int(raw.get("margin_left")),
+        show_safe_border=bool(raw.get("show_safe_border", False)),
     )
     if renderer == "epaper" and not cfg.epd_model:
         raise ConfigError(

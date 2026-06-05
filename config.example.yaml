@@ -98,6 +98,18 @@ display:
   # waveshare_lib_path: Ordner, der das Paket "waveshare_epd" enthält, z.B. den
   # python/lib-Ordner aus dem offiziellen Waveshare-Repo.
   # waveshare_lib_path: "/home/tom/e-Paper/RaspberryPi_JetsonNano/python/lib"
+
+  # --- Sicherheitsrand, falls ein Bilderrahmen/Passepartout die Kanten verdeckt ---
+  # margin gilt für alle Seiten; einzelne Seiten optional überschreiben.
+  margin: 0
+  # margin_top: 24
+  # margin_right: 16
+  # margin_bottom: 24
+  # margin_left: 16
+  # Zum Einstellen auf true setzen: zeichnet einen dünnen Rahmen an der Safe-Area-
+  # Grenze. margin so hochdrehen, bis der Rahmen rundum im Bilderrahmen sichtbar
+  # ist, dann wieder auf false.
+  show_safe_border: false
   # E-Ink nur neu zeichnen, wenn sich der Status geändert hat (schont das Panel
   # und vermeidet ständiges Blinken). Antwortzeiten allein lösen kein Refresh aus.
   redraw_only_on_change: true

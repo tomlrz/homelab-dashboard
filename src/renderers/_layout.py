@@ -89,7 +89,12 @@ def compose_rgb(black: "Image.Image", red: "Image.Image") -> "Image.Image":
 
 
 def render_oriented(
-    width: int, height: int, dashboard: Dashboard, rotation: int = 0
+    width: int,
+    height: int,
+    dashboard: Dashboard,
+    rotation: int = 0,
+    margins: Tuple[int, int, int, int] = (0, 0, 0, 0),
+    show_border: bool = False,
 ) -> Tuple["Image.Image", "Image.Image"]:
     """Zeichnet das Dashboard und liefert (black, red) in Zielgröße (width×height).
 
@@ -101,7 +106,7 @@ def render_oriented(
     else:
         draw_w, draw_h = width, height
 
-    canvas = _render(draw_w, draw_h, dashboard)
+    canvas = _render(draw_w, draw_h, dashboard, margins, show_border)
     black, red = canvas.black, canvas.red
     if rot:
         black = black.rotate(rot, expand=True)
@@ -112,24 +117,42 @@ def render_oriented(
 # --------------------------------------------------------------------------- #
 # Eigentliches Layout
 # --------------------------------------------------------------------------- #
-def _render(width: int, height: int, dashboard: Dashboard) -> BWRCanvas:
+def _render(
+    width: int,
+    height: int,
+    dashboard: Dashboard,
+    margins: Tuple[int, int, int, int] = (0, 0, 0, 0),
+    show_border: bool = False,
+) -> BWRCanvas:
     now = dashboard.timestamp
     c = BWRCanvas(width, height)
+
+    # Safe-Area: Inhalt nur innerhalb der Ränder zeichnen (Bilderrahmen verdeckt
+    # ggf. die Kanten). ox/oy = obere linke Ecke, right/bottom = innere Grenzen.
+    mt, mr, mb, ml = margins
+    ox, oy = ml, mt
+    right = max(ox + 20, width - mr)
+    bottom = max(oy + 20, height - mb)
 
     hosts = dashboard.sorted_for_display(dashboard.hosts)
     services = dashboard.sorted_for_display(dashboard.services)
     rows = hosts + services
 
-    # Zeilenhöhe/Schrift an die Auflösung koppeln (skaliert klein -> groß).
+    # Zeilenhöhe/Schrift an die nutzbare Höhe koppeln (skaliert klein -> groß).
+    usable_h = bottom - oy
     n_rows = len(rows)
     approx_lines = n_rows + 5  # Kopf + SERVICES + Summary + System + OVERALL
-    line_h = max(10, min(70, (height - 4) // max(approx_lines, 1)))
+    line_h = max(10, min(70, usable_h // max(approx_lines, 1)))
     font = _load_font(int(line_h * 0.72))
     small = _load_font(int(line_h * 0.60))
     gly = int(line_h * 0.6)
     pad = max(2, line_h // 6)
 
-    x_glyph = pad
+    if show_border:
+        # Kalibrier-Rahmen genau an der Safe-Area-Grenze.
+        c.rect([ox, oy, right - 1, bottom - 1], "black", fill=False, width=2)
+
+    x_glyph = ox
     x_name = x_glyph + gly + pad * 2
     name_w = max(
         (c.textlength(r.name, font) for r in rows),
@@ -139,15 +162,16 @@ def _render(width: int, height: int, dashboard: Dashboard) -> BWRCanvas:
     spark_pw = max(2, line_h // 8)
     spark_w = HISTORY_SHOWN * spark_pw
 
-    y = pad
+    y = oy
     bottom_reserved = line_h * 2 + pad
 
     # --- Kopf: roter Alarm-Banner oder Titel -------------------------------- #
     ok, warn, err = dashboard.counts
     if err:
         word = "DIENST" if err == 1 else "DIENSTE"
-        c.rect([0, 0, width, line_h + pad], "red", fill=True)
-        c.text((x_glyph, y), f"{err} {word} DOWN", font, "white")
+        # Banner innerhalb der Safe-Area (damit der Text garantiert sichtbar ist).
+        c.rect([ox, oy, right, oy + line_h + pad], "red", fill=True)
+        c.text((x_glyph + pad, y), f"{err} {word} DOWN", font, "white")
     else:
         title = "HOMELAB STATUS" if not warn else f"HOMELAB  {warn} WARN"
         c.text((x_glyph, y), title, font, "black")
@@ -156,17 +180,17 @@ def _render(width: int, height: int, dashboard: Dashboard) -> BWRCanvas:
     def draw_rows(items: List[CheckResult]) -> None:
         nonlocal y
         for r in items:
-            if y > height - bottom_reserved - line_h:
+            if y > bottom - bottom_reserved - line_h:
                 break
             color = "red" if r.status is Status.ERROR else "black"
             _draw_glyph(c, x_glyph, y, gly, r.status, pad)
             c.text((x_name, y), r.name, font, color)
             c.text((x_detail, y), _detail(r, now), font, color)
-            _draw_spark(c, width - spark_w - pad, y, r, line_h, spark_pw)
+            _draw_spark(c, right - spark_w, y, r, line_h, spark_pw)
             y += line_h
 
     draw_rows(hosts)
-    if services and y <= height - bottom_reserved - line_h:
+    if services and y <= bottom - bottom_reserved - line_h:
         c.text((x_name, y), "SERVICES", font, "black")
         y += line_h
         draw_rows(services)
@@ -174,12 +198,12 @@ def _render(width: int, height: int, dashboard: Dashboard) -> BWRCanvas:
     # --- Fuß: Zusammenfassung + Pi-Status, OVERALL ganz unten --------------- #
     sys_line = dashboard.system[0].message if dashboard.system else ""
     foot = dashboard.summary_line + (f"   {sys_line}" if sys_line else "")
-    c.text((x_glyph, height - line_h * 2), foot, small, "black")
+    c.text((x_glyph, bottom - line_h * 2), foot, small, "black")
 
     overall = dashboard.overall
     oc = "red" if overall is Status.ERROR else "black"
     c.text(
-        (x_glyph, height - line_h),
+        (x_glyph, bottom - line_h),
         f"OVERALL: {overall.tag}   {now.strftime('%H:%M')}",
         font,
         oc,

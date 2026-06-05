@@ -43,7 +43,12 @@ class EpaperRendererPlaceholder(Renderer):
             return
 
         black, red = render_oriented(
-            self.display.width, self.display.height, dashboard, self.display.rotation
+            self.display.width,
+            self.display.height,
+            dashboard,
+            self.display.rotation,
+            self.display.margins(),
+            self.display.show_safe_border,
         )
         try:
             compose_rgb(black, red).save("epaper_preview.png")

@@ -71,7 +71,14 @@ class EpaperRenderer(Renderer):
         try:
             epd = self._module.EPD()
             width, height = epd.width, epd.height
-            black, red = render_oriented(width, height, dashboard, self.display.rotation)
+            black, red = render_oriented(
+                width,
+                height,
+                dashboard,
+                self.display.rotation,
+                self.display.margins(),
+                self.display.show_safe_border,
+            )
 
             epd.init()
             # Genau das Erfolgsrezept aus dem funktionierenden Originalcode:
