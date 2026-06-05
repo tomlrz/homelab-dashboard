@@ -110,6 +110,12 @@ display:
   # Grenze. margin so hochdrehen, bis der Rahmen rundum im Bilderrahmen sichtbar
   # ist, dann wieder auf false.
   show_safe_border: false
+  # "SERVICES"-Zwischenüberschrift zeigen? false = eine durchgehende Liste.
+  show_services_header: true
+  # Großes Status-Gesicht rechts (Spaß-Gimmick): grinst bei ok, neutral bei warn,
+  # rotes X-Augen-Gesicht bei Fehler. Nutzt die freie rechte Hälfte. Auf großen
+  # Displays (z.B. 7,5") empfehlenswert, auf kleinen eher aus.
+  show_status_face: false
   # E-Ink nur neu zeichnen, wenn sich der Status geändert hat (schont das Panel
   # und vermeidet ständiges Blinken). Antwortzeiten allein lösen kein Refresh aus.
   redraw_only_on_change: true

@@ -77,6 +77,11 @@ class DisplayConfig:
     # Zum Einstellen: dünnen Rahmen an der Safe-Area-Grenze zeichnen. Margin so
     # hochdrehen, bis der Rahmen rundum sichtbar im Bilderrahmen sitzt.
     show_safe_border: bool = False
+    # "SERVICES"-Zwischenüberschrift anzeigen (false = eine durchgehende Liste).
+    show_services_header: bool = True
+    # Großes Status-Gesicht rechts: grinst bei ok, neutral bei warn, rotes
+    # X-Augen-Gesicht bei Fehler. Füllt die rechte Hälfte mit Leben. :)
+    show_status_face: bool = False
 
     def margins(self) -> Tuple[int, int, int, int]:
         """(top, right, bottom, left) – Einzelseiten überschreiben `margin`."""
@@ -234,6 +239,8 @@ def _parse_display(raw: Optional[Dict[str, Any]]) -> DisplayConfig:
         margin_bottom=_opt_int(raw.get("margin_bottom")),
         margin_left=_opt_int(raw.get("margin_left")),
         show_safe_border=bool(raw.get("show_safe_border", False)),
+        show_services_header=bool(raw.get("show_services_header", True)),
+        show_status_face=bool(raw.get("show_status_face", False)),
     )
     if renderer == "epaper" and not cfg.epd_model:
         raise ConfigError(

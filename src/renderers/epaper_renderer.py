@@ -78,6 +78,8 @@ class EpaperRenderer(Renderer):
                 self.display.rotation,
                 self.display.margins(),
                 self.display.show_safe_border,
+                self.display.show_services_header,
+                self.display.show_status_face,
             )
 
             epd.init()

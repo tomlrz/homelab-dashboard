@@ -49,6 +49,8 @@ class EpaperRendererPlaceholder(Renderer):
             self.display.rotation,
             self.display.margins(),
             self.display.show_safe_border,
+            self.display.show_services_header,
+            self.display.show_status_face,
         )
         try:
             compose_rgb(black, red).save("epaper_preview.png")

@@ -28,6 +28,9 @@ HISTORY_SHOWN = 10  # nur die letzten N Punkte zeigen (kurze Zeilen)
 
 
 class TextRenderer(Renderer):
+    def __init__(self, show_services_header: bool = True) -> None:
+        self.show_services_header = show_services_header
+
     def render(self, dashboard: Dashboard) -> None:
         print(self.format(dashboard))
 
@@ -59,7 +62,8 @@ class TextRenderer(Renderer):
         if hosts and services:
             lines.append("")
         if services:
-            lines.append("SERVICES")
+            if self.show_services_header:
+                lines.append("SERVICES")
             for r in services:
                 lines.append(
                     self._format_line(r, name_width, tag_width, detail_width, details)

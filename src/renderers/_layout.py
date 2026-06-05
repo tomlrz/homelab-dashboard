@@ -74,6 +74,16 @@ class BWRCanvas:
     def line(self, xy, color: str, width: int = 1) -> None:
         self._layer(color).line(xy, fill=0, width=width)
 
+    def ellipse(self, box, color: str, fill: bool = True, width: int = 1) -> None:
+        d = self._layer(color)
+        if fill:
+            d.ellipse(box, fill=0)
+        else:
+            d.ellipse(box, outline=0, width=width)
+
+    def arc(self, box, start: float, end: float, color: str, width: int = 1) -> None:
+        self._layer(color).arc(box, start=start, end=end, fill=0, width=width)
+
     def textlength(self, s: str, font) -> int:
         return int(round(self._bd.textlength(s, font=font)))
 
@@ -95,6 +105,8 @@ def render_oriented(
     rotation: int = 0,
     margins: Tuple[int, int, int, int] = (0, 0, 0, 0),
     show_border: bool = False,
+    show_services_header: bool = True,
+    show_status_face: bool = False,
 ) -> Tuple["Image.Image", "Image.Image"]:
     """Zeichnet das Dashboard und liefert (black, red) in Zielgröße (width×height).
 
@@ -106,7 +118,15 @@ def render_oriented(
     else:
         draw_w, draw_h = width, height
 
-    canvas = _render(draw_w, draw_h, dashboard, margins, show_border)
+    canvas = _render(
+        draw_w,
+        draw_h,
+        dashboard,
+        margins,
+        show_border,
+        show_services_header,
+        show_status_face,
+    )
     black, red = canvas.black, canvas.red
     if rot:
         black = black.rotate(rot, expand=True)
@@ -123,6 +143,8 @@ def _render(
     dashboard: Dashboard,
     margins: Tuple[int, int, int, int] = (0, 0, 0, 0),
     show_border: bool = False,
+    show_services_header: bool = True,
+    show_status_face: bool = False,
 ) -> BWRCanvas:
     now = dashboard.timestamp
     c = BWRCanvas(width, height)
@@ -145,7 +167,8 @@ def _render(
     n_rows = len(rows)
     has_services = bool(services)
     has_sys = bool(dashboard.system)
-    extra = 1 + (1 if has_services else 0) + (1 if has_sys else 0) + 2 + 1
+    show_header = has_services and show_services_header
+    extra = 1 + (1 if show_header else 0) + (1 if has_sys else 0) + 2 + 1
     approx_lines = n_rows + extra
     line_h = max(10, min(70, usable_h // max(approx_lines, 1)))
     font = _load_font(int(line_h * 0.72))
@@ -197,10 +220,20 @@ def _render(
             y += line_h
 
     draw_rows(hosts)
-    if services and y <= bottom - bottom_reserved - line_h:
-        c.text((x_name, y), "SERVICES", font, "black")
-        y += line_h
+    if services:
+        if show_header and y <= bottom - bottom_reserved - line_h:
+            c.text((x_name, y), "SERVICES", font, "black")
+            y += line_h
         draw_rows(services)
+
+    # --- Optionales Status-Gesicht in der rechten freien Hälfte ------------- #
+    if show_status_face:
+        face_x0 = ox + int((right - ox) * 0.55)
+        face_x1 = right - spark_w - pad * 2
+        face_y0 = oy + line_h * 2
+        face_y1 = bottom - bottom_reserved - pad
+        if face_x1 - face_x0 > 40 and face_y1 - face_y0 > 40:
+            _draw_face(c, dashboard.overall, face_x0, face_y0, face_x1, face_y1)
 
     # --- Fuß: (Pi-Status) + Zusammenfassung + OVERALL, jeweils eigene Zeile -- #
     if has_sys:
@@ -221,6 +254,46 @@ def _render(
         oc,
     )
     return c
+
+
+def _draw_face(
+    c: BWRCanvas, status: Status, x0: int, y0: int, x1: int, y1: int
+) -> None:
+    """Großes Status-Gesicht: grinst (ok), neutral (warn), rotes X-Augen-
+    Gesicht (error). Reagiert auf den Gesamtstatus."""
+    cx = (x0 + x1) / 2.0
+    cy = (y0 + y1) / 2.0
+    r = min(x1 - x0, y1 - y0) / 2.0 * 0.9
+    color = "red" if status is Status.ERROR else "black"
+    lw = max(3, int(r * 0.06))
+
+    # Kopf
+    c.ellipse([cx - r, cy - r, cx + r, cy + r], color, fill=False, width=lw)
+
+    # Augen
+    ex, ey = r * 0.40, r * 0.28
+    er = max(2, int(r * 0.10))
+    for sx in (-1, 1):
+        ecx = cx + sx * ex
+        ecy = cy - ey
+        if status is Status.ERROR:
+            # X-Augen ("oh nein")
+            c.line([ecx - er, ecy - er, ecx + er, ecy + er], color, width=lw)
+            c.line([ecx - er, ecy + er, ecx + er, ecy - er], color, width=lw)
+        else:
+            c.ellipse([ecx - er, ecy - er, ecx + er, ecy + er], color, fill=True)
+
+    # Mund
+    mw = r * 0.5
+    if status is Status.OK:
+        # Lächeln (untere Kurve)
+        c.arc([cx - mw, cy - r * 0.10, cx + mw, cy + r * 0.70], 20, 160, color, lw)
+    elif status is Status.WARN:
+        # neutraler Strich
+        c.line([cx - mw, cy + r * 0.35, cx + mw, cy + r * 0.35], color, width=lw)
+    else:
+        # trauriger Mund (obere Kurve)
+        c.arc([cx - mw, cy + r * 0.10, cx + mw, cy + r * 0.90], 200, 340, color, lw)
 
 
 def _draw_glyph(c: BWRCanvas, x: int, y: int, size: int, status: Status, pad: int) -> None:

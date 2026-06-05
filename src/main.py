@@ -65,7 +65,7 @@ def build_renderer(display: DisplayConfig) -> Renderer:
         return EpaperRenderer(display)
     if display.renderer == "epaper_placeholder":
         return EpaperRendererPlaceholder(display)
-    return TextRenderer()
+    return TextRenderer(show_services_header=display.show_services_header)
 
 
 def run_checks(config: AppConfig) -> Dashboard:
