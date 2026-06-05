@@ -1,0 +1,130 @@
+# -----------------------------------------------------------------------------
+# Beispielkonfiguration für das Homelab-Statusdashboard
+#
+# Vorgehen:
+#   cp config.example.yaml config.yaml
+# und dann config.yaml an dein Homelab anpassen. config.yaml ist über
+# .gitignore vom Repository ausgeschlossen (enthält ggf. interne Hostnamen/IPs).
+#
+# Check-Typen (Feld "type"):
+#   http  / https : prüft eine URL (Feld "url")
+#   tcp           : prüft, ob Host:Port erreichbar ist (Felder "host" + "port")
+#   ping          : ICMP-Ping (Feld "host"); fällt automatisch auf TCP zurück,
+#                   wenn zusätzlich ein "port" angegeben ist (empfohlen!)
+# -----------------------------------------------------------------------------
+
+# Wie oft soll geprüft werden? Wird im Standardbetrieb vom systemd-Timer
+# gesteuert (alle 5 Minuten). Relevant nur für den optionalen --watch-Modus.
+update_interval_seconds: 300
+
+# --- NAS (läuft 24/7) --------------------------------------------------------
+# Empfehlung: type=tcp statt ping. TCP braucht keine Sonderrechte und sagt dir
+# zugleich, ob ein konkreter Dienstport (z.B. 443 = Web-UI) offen ist.
+nas:
+  name: "NAS"
+  type: "tcp"
+  host: "192.168.1.10"   # IP oder Hostname deines UGREEN NAS
+  port: 443              # z.B. Web-UI; alternativ 80, 9000 (Docker UI) etc.
+  timeout: 3
+
+# --- Proxmox (separater Host) ------------------------------------------------
+proxmox:
+  name: "PROXMOX"
+  type: "https"
+  url: "https://192.168.1.20:8006/"  # Proxmox Web-UI
+  host: "192.168.1.20"               # für evtl. Fallback/Doku
+  timeout: 4
+  verify_ssl: false                  # Proxmox nutzt i.d.R. ein self-signed Cert
+  # Proxmox liefert auf / oft 200 oder einen Redirect -> 200-399 ist ok.
+  expected_status: [200, 399]
+
+# --- Einzelne Dienste --------------------------------------------------------
+services:
+  - name: "Nextcloud"
+    type: "https"
+    url: "https://nas.example.lan/nextcloud/status.php"
+    timeout: 5
+    verify_ssl: true
+    expected_status: [200, 399]
+    # Optional: erreichbar, aber langsamer als X ms -> WARN (Frühwarnung).
+    warn_response_ms: 2000
+
+  - name: "Immich"
+    type: "http"
+    url: "http://192.168.1.10:2283/api/server/ping"
+    timeout: 5
+
+  - name: "Paperless"
+    type: "http"
+    url: "http://192.168.1.10:8000/"
+    timeout: 5
+
+  # Beispiel reiner Port-Check (z.B. Tailscale-/Docker-Daemon o.ä.):
+  - name: "Docker"
+    type: "tcp"
+    host: "192.168.1.10"
+    port: 2375
+    timeout: 3
+
+  # Beispiel Ping mit TCP-Fallback (falls ICMP geblockt/keine Rechte):
+  - name: "Tailscale"
+    type: "ping"
+    host: "100.100.100.100"   # eine Tailscale-IP im Tailnet
+    port: 443                 # Fallback-Port, falls Ping nicht geht
+    timeout: 3
+
+  # Später ergänzbar:
+  # - name: "HomeAssistant"
+  #   type: "http"
+  #   url: "http://192.168.1.30:8123/"
+  #   timeout: 5
+
+# --- Anzeige -----------------------------------------------------------------
+display:
+  # "text"             -> Ausgabe ins Terminal/Log (Standard, kein Display nötig)
+  # "epaper_placeholder" -> erzeugt eine Bild-Vorschau (epaper_preview.png) und
+  #                         ist Platzhalter für den späteren Waveshare-Treiber
+  renderer: "text"
+  rotation: 0     # 0 / 90 / 180 / 270 – Drehung fürs Display
+  width: 250      # Pixelbreite des späteren E-Ink-Displays
+  height: 122     # Pixelhöhe des späteren E-Ink-Displays
+  # E-Ink nur neu zeichnen, wenn sich der Status geändert hat (schont das Panel
+  # und vermeidet ständiges Blinken). Antwortzeiten allein lösen kein Refresh aus.
+  redraw_only_on_change: true
+
+# --- Auswertung / Robustheit -------------------------------------------------
+monitoring:
+  # Erst nach so vielen Fehlschlägen in Folge wirklich FAIL melden (Flapping-
+  # Schutz). Bis dahin wird der Dienst als "instabil" (WARN) angezeigt. 1 = sofort.
+  failure_threshold: 2
+  # Länge des Verlaufsstreifens (gespeicherte ok/fail-Punkte pro Dienst).
+  history_length: 20
+  # Datei für den Laufzeit-Zustand (down-seit, Verlauf). Relativ zur config.yaml.
+  state_file: "state.json"
+  # Checks parallel ausführen -> schneller bei vielen Diensten/Timeouts.
+  parallel: true
+  max_workers: 8
+  # Pi-Eigenstatus anzeigen (CPU-Temp, Unterspannung, WLAN, Uptime).
+  show_system: true
+
+# --- Push-Benachrichtigung bei Statuswechsel ---------------------------------
+notify:
+  # "none" (aus) | "ntfy" | "telegram" | "gotify"
+  provider: "none"
+  # Wann benachrichtigen? "error" = Ausfall, "recovery" = wieder erreichbar.
+  notify_on: ["error", "recovery"]
+
+  # --- ntfy (am einfachsten: App installieren, Topic abonnieren) ---
+  # provider: "ntfy"
+  ntfy_url: "https://ntfy.sh"
+  ntfy_topic: "dein-geheimes-topic-xyz"   # frei wählbar, aber schwer erratbar!
+
+  # --- Telegram ---
+  # provider: "telegram"
+  # telegram_bot_token: "123456:ABC-DEF..."
+  # telegram_chat_id: "987654321"
+
+  # --- Gotify (self-hosted) ---
+  # provider: "gotify"
+  # gotify_url: "https://gotify.example.lan"
+  # gotify_token: "Axxxxxxxxxxxx"

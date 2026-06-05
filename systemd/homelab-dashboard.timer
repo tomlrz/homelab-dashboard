@@ -1,0 +1,15 @@
+[Unit]
+Description=Startet das Homelab Status Dashboard alle 5 Minuten
+
+[Timer]
+# Kurz nach dem Boot einmal starten ...
+OnBootSec=1min
+# ... und danach alle 5 Minuten relativ zum letzten Lauf.
+OnUnitActiveSec=5min
+# Sorgt dafür, dass nach einer Standby-/Offline-Phase nachgeholt wird:
+Persistent=true
+# Verknüpft den Timer mit der gleichnamigen .service-Unit:
+Unit=homelab-dashboard.service
+
+[Install]
+WantedBy=timers.target

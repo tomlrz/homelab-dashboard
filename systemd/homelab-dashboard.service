@@ -1,0 +1,27 @@
+[Unit]
+Description=Homelab Status Dashboard (ein Durchlauf)
+# Netzwerk sollte stehen, bevor wir Dienste prüfen:
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+# oneshot: der Dienst läuft EINMAL und beendet sich. Die Wiederholung
+# übernimmt der zugehörige .timer (alle 5 Minuten) – keine Endlosschleife.
+Type=oneshot
+
+# Die folgenden Platzhalter ersetzt scripts/install_systemd.sh automatisch
+# durch deine echten Werte (oder du trägst sie hier von Hand ein):
+#   __USER__        -> z.B. pi
+#   __PROJECT_DIR__ -> absoluter Pfad zum Projektordner
+User=__USER__
+WorkingDirectory=__PROJECT_DIR__
+
+# venv-Python verwenden, config.yaml relativ zum WorkingDirectory.
+ExecStart=__PROJECT_DIR__/venv/bin/python __PROJECT_DIR__/src/main.py --config __PROJECT_DIR__/config.yaml
+
+# Etwas Robustheit/Hardening (konservativ gewählt, damit Pings/Sockets gehen):
+Nice=10
+TimeoutStartSec=120
+
+[Install]
+WantedBy=multi-user.target

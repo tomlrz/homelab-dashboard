@@ -1,0 +1,12 @@
+# Laufzeitabhängigkeiten – bewusst minimal gehalten.
+
+# HTTP/HTTPS-Checks
+requests>=2.31,<3
+
+# Konfiguration (config.yaml)
+PyYAML>=6.0,<7
+
+# Bildaufbau für den E-Paper-(Placeholder-)Renderer.
+# Wird für den reinen TextRenderer NICHT benötigt – kann auf sehr kleinen
+# Systemen weggelassen werden, wenn nur "renderer: text" genutzt wird.
+Pillow>=10.0
