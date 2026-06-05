@@ -139,9 +139,14 @@ def _render(
     rows = hosts + services
 
     # Zeilenhöhe/Schrift an die nutzbare Höhe koppeln (skaliert klein -> groß).
+    # Logische Zeilen genau zählen, damit keine Zeile abgeschnitten wird:
+    # Banner + Hosts + (SERVICES) + Services + (PI) + Summary + OVERALL + Reserve.
     usable_h = bottom - oy
     n_rows = len(rows)
-    approx_lines = n_rows + 5  # Kopf + SERVICES + Summary + System + OVERALL
+    has_services = bool(services)
+    has_sys = bool(dashboard.system)
+    extra = 1 + (1 if has_services else 0) + (1 if has_sys else 0) + 2 + 1
+    approx_lines = n_rows + extra
     line_h = max(10, min(70, usable_h // max(approx_lines, 1)))
     font = _load_font(int(line_h * 0.72))
     small = _load_font(int(line_h * 0.60))
@@ -163,7 +168,9 @@ def _render(
     spark_w = HISTORY_SHOWN * spark_pw
 
     y = oy
-    bottom_reserved = line_h * 2 + pad
+    # Fußzeilen unten reservieren: ggf. Pi-Status + Summary + OVERALL.
+    foot_lines = 3 if has_sys else 2
+    bottom_reserved = line_h * foot_lines + pad
 
     # --- Kopf: roter Alarm-Banner oder Titel -------------------------------- #
     ok, warn, err = dashboard.counts
@@ -195,10 +202,15 @@ def _render(
         y += line_h
         draw_rows(services)
 
-    # --- Fuß: Zusammenfassung + Pi-Status, OVERALL ganz unten --------------- #
-    sys_line = dashboard.system[0].message if dashboard.system else ""
-    foot = dashboard.summary_line + (f"   {sys_line}" if sys_line else "")
-    c.text((x_glyph, bottom - line_h * 2), foot, small, "black")
+    # --- Fuß: (Pi-Status) + Zusammenfassung + OVERALL, jeweils eigene Zeile -- #
+    if has_sys:
+        c.text(
+            (x_glyph, bottom - line_h * 3),
+            f"{dashboard.system[0].name} {dashboard.system[0].message}",
+            small,
+            "black",
+        )
+    c.text((x_glyph, bottom - line_h * 2), dashboard.summary_line, small, "black")
 
     overall = dashboard.overall
     oc = "red" if overall is Status.ERROR else "black"
