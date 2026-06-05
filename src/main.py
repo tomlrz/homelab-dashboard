@@ -187,19 +187,31 @@ def _cycle(
     # Pi-Eigenstatus (zählt nicht in den Gesamtstatus hinein).
     dashboard.system = collect_system(config.monitoring.show_system)
 
-    # Hat sich gegenüber dem letzten Lauf etwas geändert? (E-Ink-Refresh)
+    # Neu zeichnen, wenn sich der Status geändert hat ODER der Heartbeat fällig
+    # ist (damit die Uhrzeit aktuell bleibt und man sieht, dass es läuft).
+    now = dashboard.timestamp
     signature = dashboard.state_signature()
-    dashboard.changed = signature != state.last_signature
+    status_changed = signature != state.last_signature
+    heartbeat_due = state.heartbeat_due(now, config.display.heartbeat_minutes)
+    dashboard.changed = status_changed or heartbeat_due
 
+    if status_changed:
+        reason = ""
+    elif heartbeat_due:
+        reason = " (Heartbeat-Refresh)"
+    else:
+        reason = " (unverändert)"
     logger.info(
         "Checks fertig: overall=%s | %s%s",
         dashboard.overall.value,
         dashboard.summary_line,
-        "" if dashboard.changed else " (unverändert)",
+        reason,
     )
 
     try:
         renderer.render(dashboard)
+        if dashboard.changed:
+            state.mark_rendered(now)
     except Exception:  # Anzeige darf den Dienst nie crashen lassen
         logger.exception("Renderer ist fehlgeschlagen.")
 

@@ -91,6 +91,10 @@ display:
   # E-Ink nur neu zeichnen, wenn sich der Status geändert hat (schont das Panel
   # und vermeidet ständiges Blinken). Antwortzeiten allein lösen kein Refresh aus.
   redraw_only_on_change: true
+  # Heartbeat: spätestens alle X Minuten einmal neu zeichnen, auch wenn sich
+  # nichts geändert hat. So bleibt die angezeigte Uhrzeit aktuell und du siehst,
+  # dass das System läuft (alte Uhrzeit = es hängt). 0 = aus.
+  heartbeat_minutes: 60
 
 # --- Auswertung / Robustheit -------------------------------------------------
 monitoring:

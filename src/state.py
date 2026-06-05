@@ -74,6 +74,21 @@ class StateStore:
     def last_signature(self, value: str) -> None:
         self._data["signature"] = value
 
+    def heartbeat_due(self, now: datetime, heartbeat_minutes: int) -> bool:
+        """True, wenn seit dem letzten Zeichnen >= heartbeat_minutes vergangen
+        sind (oder noch nie gezeichnet wurde). 0 schaltet den Heartbeat aus."""
+        if heartbeat_minutes <= 0:
+            return False
+        last = self._data.get("last_render")
+        last_dt = _parse_iso(last) if last else None
+        if last_dt is None:
+            return True
+        return (now - last_dt).total_seconds() >= heartbeat_minutes * 60
+
+    def mark_rendered(self, now: datetime) -> None:
+        """Merkt sich den Zeitpunkt des letzten tatsächlichen Neuzeichnens."""
+        self._data["last_render"] = now.isoformat()
+
     # ------------------------------------------------------------------ #
     # Kernlogik: rohe Check-Ergebnisse mit Zustand anreichern
     # ------------------------------------------------------------------ #

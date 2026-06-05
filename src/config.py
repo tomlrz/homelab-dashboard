@@ -54,6 +54,10 @@ class DisplayConfig:
     height: int = 122
     # E-Ink nur neu zeichnen, wenn sich der Status geändert hat (schont Panel).
     redraw_only_on_change: bool = True
+    # Heartbeat: spätestens nach so vielen Minuten einmal neu zeichnen, auch ohne
+    # Statuswechsel. So bleibt die angezeigte Uhrzeit aktuell -> man erkennt, dass
+    # das System noch läuft (eine alte Uhrzeit = es hängt). 0 = aus.
+    heartbeat_minutes: int = 60
 
 
 @dataclass
@@ -187,6 +191,7 @@ def _parse_display(raw: Optional[Dict[str, Any]]) -> DisplayConfig:
         width=int(raw.get("width", 250)),
         height=int(raw.get("height", 122)),
         redraw_only_on_change=bool(raw.get("redraw_only_on_change", True)),
+        heartbeat_minutes=max(0, int(raw.get("heartbeat_minutes", 60))),
     )
 
 

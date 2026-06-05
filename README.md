@@ -40,7 +40,9 @@ Endlosschleife im Programm.
 - **Pi-Eigenstatus** in der Fußzeile: CPU-Temperatur, Unterspannung/Throttling
   (`vcgencmd`), WLAN-Signal, Uptime.
 - **Parallele Checks** (Thread-Pool) – schnell auch bei vielen Diensten/Timeouts.
-- **E-Ink-schonend:** Neuzeichnen nur bei Statusänderung (`redraw_only_on_change`).
+- **E-Ink-schonend:** Neuzeichnen nur bei Statusänderung (`redraw_only_on_change`),
+  plus **Heartbeat-Refresh** (`heartbeat_minutes`), damit die Uhrzeit aktuell
+  bleibt und man sieht, dass das System noch läuft.
 - **Push-Benachrichtigung** bei Statuswechsel via **ntfy / Telegram / Gotify**.
 - **Antwortzeit-Warnung:** `warn_response_ms` stuft „erreichbar, aber langsam"
   auf WARN herab.
