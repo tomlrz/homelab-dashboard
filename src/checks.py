@@ -27,6 +27,15 @@ try:
     import requests
     from requests.exceptions import RequestException
 
+    # Wir nutzen bewusst verify_ssl: false für self-signed Zertifikate (z.B.
+    # Proxmox). Die laute InsecureRequestWarning pro Request daher unterdrücken.
+    try:
+        import urllib3
+
+        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+    except Exception:  # pragma: no cover
+        pass
+
     _HAS_REQUESTS = True
 except Exception:  # pragma: no cover - nur im Fehlerfall relevant
     requests = None  # type: ignore[assignment]
