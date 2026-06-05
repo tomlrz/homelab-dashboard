@@ -85,15 +85,17 @@ def _check_http(target: Target) -> CheckResult:
             timestamp=timestamp,
         )
 
+    # Optionaler Host-Header für vhost-/trusted_domains-Fälle.
+    headers = {"Host": target.host_header} if target.host_header else None
+
     start = time.perf_counter()
     try:
-        # allow_redirects=False, damit wir den tatsächlichen Statuscode sehen
-        # und nicht versehentlich einem Redirect auf eine Fehlerseite folgen.
         resp = requests.get(
             target.url,
             timeout=target.timeout,
             verify=target.verify_ssl,
             allow_redirects=True,
+            headers=headers,
         )
         elapsed_ms = (time.perf_counter() - start) * 1000.0
 

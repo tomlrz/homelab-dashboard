@@ -44,6 +44,10 @@ class Target:
     verify_ssl: bool = True
     # Antwortzeit-Warnschwelle in ms: darüber -> WARN (None = aus).
     warn_response_ms: Optional[int] = None
+    # Optionaler Host-Header (vhost): nötig, wenn ein Reverse Proxy / Nextcloud
+    # trusted_domains den Zugriff per nackter IP mit 400 ablehnt. Dann hier den
+    # echten Hostnamen eintragen, unter dem der Dienst erreichbar ist.
+    host_header: Optional[str] = None
 
 
 @dataclass
@@ -185,6 +189,7 @@ def _parse_target(raw: Dict[str, Any], default_name: str = "") -> Target:
         expected_status_max=hi,
         verify_ssl=bool(raw.get("verify_ssl", True)),
         warn_response_ms=int(warn_ms) if warn_ms is not None else None,
+        host_header=raw.get("host_header"),
     )
     _validate_target(target)
     return target
