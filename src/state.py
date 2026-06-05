@@ -89,6 +89,24 @@ class StateStore:
         """Merkt sich den Zeitpunkt des letzten tatsächlichen Neuzeichnens."""
         self._data["last_render"] = now.isoformat()
 
+    def days_without_incident(self, now: datetime, is_error: bool) -> int:
+        """'Tage ohne Ausfall'. Bei einem Ausfall (is_error) wird auf 0 gesetzt
+        und der Startpunkt auf heute zurückgesetzt; sonst Tage seit dem letzten
+        Ausfall (bzw. seit dem ersten Lauf)."""
+        today = now.date()
+        clean_since = self._data.get("clean_since")
+        if is_error or not clean_since:
+            self._data["clean_since"] = today.isoformat()
+            if is_error:
+                return 0
+            clean_since = today.isoformat()
+        try:
+            start = datetime.fromisoformat(clean_since).date()
+        except (ValueError, TypeError):
+            start = today
+            self._data["clean_since"] = today.isoformat()
+        return max(0, (today - start).days)
+
     # ------------------------------------------------------------------ #
     # Kernlogik: rohe Check-Ergebnisse mit Zustand anreichern
     # ------------------------------------------------------------------ #

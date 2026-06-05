@@ -82,6 +82,10 @@ class DisplayConfig:
     # Großes Status-Gesicht rechts: grinst bei ok, neutral bei warn, rotes
     # X-Augen-Gesicht bei Fehler. Füllt die rechte Hälfte mit Leben. :)
     show_status_face: bool = False
+    # Rechtes Info-Panel: großer "Tage ohne Ausfall"-Counter + täglich wechselnd
+    # Witz / Tech-History (aus side_panel_content_file). Blendet die Sparklines aus.
+    show_side_panel: bool = False
+    side_panel_content_file: str = "content/sidepanel.json"
 
     def margins(self) -> Tuple[int, int, int, int]:
         """(top, right, bottom, left) – Einzelseiten überschreiben `margin`."""
@@ -241,6 +245,10 @@ def _parse_display(raw: Optional[Dict[str, Any]]) -> DisplayConfig:
         show_safe_border=bool(raw.get("show_safe_border", False)),
         show_services_header=bool(raw.get("show_services_header", True)),
         show_status_face=bool(raw.get("show_status_face", False)),
+        show_side_panel=bool(raw.get("show_side_panel", False)),
+        side_panel_content_file=str(
+            raw.get("side_panel_content_file", "content/sidepanel.json")
+        ),
     )
     if renderer == "epaper" and not cfg.epd_model:
         raise ConfigError(

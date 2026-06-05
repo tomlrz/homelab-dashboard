@@ -1,0 +1,37 @@
+{
+  "_comment": "Inhalte für das rechte Panel. Täglich wird abwechselnd ein Witz oder ein Tech-History-Eintrag gezeigt. Liste gern erweitern – kurze Texte wirken am besten.",
+  "jokes": [
+    "Es gibt 10 Arten von Menschen: die, die Binär verstehen, und die, die es nicht tun.",
+    "Warum verwechseln Programmierer Halloween und Weihnachten? Weil OCT 31 = DEC 25.",
+    "Ein SQL-Statement betritt eine Bar, geht zu zwei Tischen und fragt: 'Darf ich mich joinen?'",
+    "Die zwei schwersten Probleme der Informatik: Cache-Invalidierung, Benennung und Off-by-one-Fehler.",
+    "'Kauf Brot, und wenn sie Eier haben, nimm 6.' Er kam mit 6 Broten zurück.",
+    "Wie nennt man 8 Hobbits? Ein Hobbyte.",
+    "Warum war der Entwickler pleite? Er hatte seinen Cache geleert.",
+    "Es gibt keine dummen Fragen, nur dumme STACK OVERFLOWs.",
+    "UDP-Witze erzähle ich nicht – man weiß nie, ob sie ankommen.",
+    "Wie viele Programmierer braucht man für eine Glühbirne? Keinen – das ist ein Hardware-Problem.",
+    "99 kleine Bugs im Code. Nimm einen raus, patch ihn rum: 127 kleine Bugs im Code.",
+    "Mein Passwort ist 'Schneewittchen' – mindestens 7 Zeichen, sagte das Formular.",
+    "Es gibt zwei Arten von Menschen: die, die aus Backups lernen, und die, die noch nie eins gebraucht haben.",
+    "TCP-Witz gefällig? Ja, gern. Ich erzähle ihn dir, bis du ihn bestätigst.",
+    "Ein Byte geht zum Arzt: 'Mir ist schlecht.' Arzt: 'Ein Bit zu viel gegessen?'"
+  ],
+  "history": [
+    "1969: Die erste ARPANET-Verbindung wird aufgebaut – der Urknall des Internets.",
+    "1991: Linus Torvalds kündigt sein freies Betriebssystem 'Linux' an.",
+    "1983: Das ARPANET stellt auf TCP/IP um – der 'Geburtstag' des Internets.",
+    "1971: Ray Tomlinson verschickt die erste E-Mail und etabliert das @-Zeichen.",
+    "1989: Tim Berners-Lee schlägt am CERN das World Wide Web vor.",
+    "1965: Gordon Moore formuliert das berühmte 'Mooresche Gesetz'.",
+    "1947: In den Bell Labs wird der erste Transistor vorgeführt.",
+    "1975: Microsoft wird von Bill Gates und Paul Allen gegründet.",
+    "1976: Apple wird von Steve Jobs und Steve Wozniak gegründet.",
+    "2007: Apple stellt das erste iPhone vor.",
+    "1995: Java, PHP und JavaScript erblicken das Licht der Welt.",
+    "1991: Die allererste Webseite der Welt geht online.",
+    "1981: IBM stellt den IBM PC vor – der Beginn der PC-Ära.",
+    "1998: Google wird gegründet.",
+    "1972: Das Spiel 'Pong' startet die Videospiel-Industrie."
+  ]
+}

@@ -116,6 +116,11 @@ display:
   # rotes X-Augen-Gesicht bei Fehler. Nutzt die freie rechte Hälfte. Auf großen
   # Displays (z.B. 7,5") empfehlenswert, auf kleinen eher aus.
   show_status_face: false
+  # Rechtes Info-Panel: großer "Tage ohne Ausfall"-Counter (springt bei einem
+  # Ausfall rot auf 0) + täglich wechselnd Witz / Tech-History. Blendet die
+  # Verlaufs-Sparklines aus. Inhalte in side_panel_content_file (offline, im Repo).
+  show_side_panel: false
+  side_panel_content_file: "content/sidepanel.json"
   # E-Ink nur neu zeichnen, wenn sich der Status geändert hat (schont das Panel
   # und vermeidet ständiges Blinken). Antwortzeiten allein lösen kein Refresh aus.
   redraw_only_on_change: true

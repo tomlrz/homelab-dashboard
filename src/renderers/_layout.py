@@ -21,7 +21,7 @@ from typing import List, Optional, Tuple
 
 from PIL import Image, ImageDraw, ImageFont
 
-from models import CheckResult, Dashboard, Status
+from models import CheckResult, Dashboard, SidePanel, Status
 
 logger = logging.getLogger(__name__)
 
@@ -207,6 +207,8 @@ def _render(
         c.text((x_glyph, y), title, font, "black")
     y += line_h + pad * 2
 
+    draw_sparks = dashboard.side_panel is None  # Panel ersetzt die Sparklines
+
     def draw_rows(items: List[CheckResult]) -> None:
         nonlocal y
         for r in items:
@@ -216,7 +218,8 @@ def _render(
             _draw_glyph(c, x_glyph, y, gly, r.status, pad)
             c.text((x_name, y), r.name, font, color)
             c.text((x_detail, y), _detail(r, now), font, color)
-            _draw_spark(c, right - spark_w, y, r, line_h, spark_pw)
+            if draw_sparks:
+                _draw_spark(c, right - spark_w, y, r, line_h, spark_pw)
             y += line_h
 
     draw_rows(hosts)
@@ -234,6 +237,15 @@ def _render(
         face_y1 = bottom - bottom_reserved - pad
         if face_x1 - face_x0 > 40 and face_y1 - face_y0 > 40:
             _draw_face(c, dashboard.overall, face_x0, face_y0, face_x1, face_y1)
+
+    # --- Optionales rechtes Info-Panel (Counter + Witz/Tech-History) -------- #
+    if dashboard.side_panel is not None:
+        p_x0 = ox + int((right - ox) * 0.52) + pad * 2
+        p_x1 = right
+        p_y0 = oy + line_h
+        p_y1 = bottom - pad  # rechte Spalte hat keine Fußzeile -> volle Höhe
+        if p_x1 - p_x0 > 60 and p_y1 - p_y0 > 80:
+            _draw_side_panel(c, dashboard.side_panel, p_x0, p_y0, p_x1, p_y1)
 
     # --- Fuß: (Pi-Status) + Zusammenfassung + OVERALL, jeweils eigene Zeile -- #
     if has_sys:
@@ -294,6 +306,77 @@ def _draw_face(
     else:
         # trauriger Mund (obere Kurve)
         c.arc([cx - mw, cy + r * 0.10, cx + mw, cy + r * 0.90], 200, 340, color, lw)
+
+
+def _wrap(c: BWRCanvas, text: str, font, max_w: int) -> List[str]:
+    """Bricht Text auf max. Pixelbreite um (wortweise)."""
+    out: List[str] = []
+    cur = ""
+    for word in text.split():
+        t = (cur + " " + word).strip()
+        if c.textlength(t, font) <= max_w or not cur:
+            cur = t
+        else:
+            out.append(cur)
+            cur = word
+    if cur:
+        out.append(cur)
+    return out
+
+
+def _draw_side_panel(
+    c: BWRCanvas, panel: SidePanel, x0: int, y0: int, x1: int, y1: int
+) -> None:
+    """Rechtes Panel: großer 'Tage ohne Ausfall'-Counter + Witz/Tech-History."""
+    w = x1 - x0
+    ph = y1 - y0
+    # Trennlinie zum Dashboard links
+    div = x0 - max(8, w // 16)
+    c.line([div, y0, div, y1], "black", width=2)
+
+    f_lab = _load_font(max(12, int(ph * 0.072)))
+    f_big = _load_font(max(40, int(ph * 0.25)))
+    f_h = _load_font(max(11, int(ph * 0.052)))
+
+    y = y0
+    c.text((x0, y), "TAGE OHNE", f_lab, "black")
+    y += int(ph * 0.082)
+    c.text((x0, y), "AUSFALL", f_lab, "black")
+    y += int(ph * 0.090)
+
+    col = "red" if panel.incident_now else "black"
+    c.text((x0, y), str(panel.days_without_incident), f_big, col)
+    y += int(ph * 0.28)
+
+    c.line([x0, y, x1, y], "black", width=2)
+    y += int(ph * 0.035)
+
+    for ln in _wrap(c, panel.header, f_h, w):
+        c.text((x0, y), ln, f_h, "black")
+        y += int(ph * 0.055)
+    y += int(ph * 0.015)
+
+    # Body-Schrift automatisch so wählen, dass Witz/Fakt komplett in die
+    # Resthöhe passt (variable Textlängen -> nie abgeschnitten).
+    avail = y1 - y
+    max_bs = max(13, int(ph * 0.072))
+    font, lines, step = _load_font(13), [], 16
+    for bs in range(max_bs, 11, -1):
+        f = _load_font(bs)
+        wrapped = _wrap(c, panel.body, f, w)
+        st = int(bs * 1.18)
+        if len(wrapped) * st <= avail:
+            font, lines, step = f, wrapped, st
+            break
+    else:
+        font = _load_font(12)
+        lines = _wrap(c, panel.body, font, w)
+        step = 14
+    for ln in lines:
+        if y > y1 - step:
+            break
+        c.text((x0, y), ln, font, "black")
+        y += step
 
 
 def _draw_glyph(c: BWRCanvas, x: int, y: int, size: int, status: Status, pad: int) -> None:

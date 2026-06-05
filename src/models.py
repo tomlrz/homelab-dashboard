@@ -75,6 +75,16 @@ class CheckResult:
 
 
 @dataclass
+class SidePanel:
+    """Inhalt des optionalen rechten Panels: Ausfall-Counter + Spruch/Fakt."""
+
+    days_without_incident: int
+    incident_now: bool  # aktuell ein Ausfall? -> Counter rot / 0
+    header: str
+    body: str
+
+
+@dataclass
 class Dashboard:
     """Gesammeltes Ergebnis aller Checks, gruppiert für die Anzeige.
 
@@ -90,6 +100,9 @@ class Dashboard:
     timestamp: datetime = field(default_factory=datetime.now)
     # Hat sich gegenüber dem letzten Lauf etwas geändert? (für E-Ink-Refresh)
     changed: bool = True
+    # Optionales rechtes Panel (Counter + Witz/Tech-History). Wenn gesetzt, zeigt
+    # der E-Paper-Renderer es an und blendet die Verlaufs-Sparklines aus.
+    side_panel: "Optional[SidePanel]" = None
 
     @property
     def monitored(self) -> List[CheckResult]:

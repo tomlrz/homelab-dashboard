@@ -43,8 +43,9 @@ from config import (  # noqa: E402
     Target,
     load_config,
 )
-from models import CheckResult, Dashboard  # noqa: E402
+from models import CheckResult, Dashboard, SidePanel  # noqa: E402
 from notify import Notifier  # noqa: E402
+from sidepanel import pick_text  # noqa: E402
 from renderers.base import Renderer  # noqa: E402
 from renderers.epaper_renderer import EpaperRenderer  # noqa: E402
 from renderers.epaper_renderer_placeholder import (  # noqa: E402
@@ -57,6 +58,13 @@ from system_info import collect_system  # noqa: E402
 logger = logging.getLogger("homelab_dashboard")
 
 DEFAULT_CONFIG = "config.yaml"
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
+
+def _resolve_project_path(p: str) -> str:
+    """Pfad relativ zum Projektordner auflösen (für mitgelieferte Dateien)."""
+    path = Path(p)
+    return str(path if path.is_absolute() else PROJECT_ROOT / path)
 
 
 def build_renderer(display: DisplayConfig) -> Renderer:
@@ -197,6 +205,20 @@ def _cycle(
     status_changed = signature != state.last_signature
     heartbeat_due = state.heartbeat_due(now, config.display.heartbeat_minutes)
     dashboard.changed = status_changed or heartbeat_due
+
+    # Optionales rechtes Panel: Ausfall-Counter + Witz/Tech-History.
+    if config.display.show_side_panel:
+        is_error = dashboard.overall.value == "error"
+        days = state.days_without_incident(now, is_error)
+        header, body = pick_text(
+            _resolve_project_path(config.display.side_panel_content_file), now
+        )
+        dashboard.side_panel = SidePanel(
+            days_without_incident=days,
+            incident_now=is_error,
+            header=header,
+            body=body,
+        )
 
     if status_changed:
         reason = ""
