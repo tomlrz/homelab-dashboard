@@ -190,6 +190,14 @@ def _render(
     spark_pw = max(2, line_h // 8)
     spark_w = HISTORY_SHOWN * spark_pw
 
+    # Sitzt rechts ein Panel? Dann dürfen die Zeilen nicht hineinragen.
+    if dashboard.side_panel is not None:
+        panel_x0 = ox + int((right - ox) * 0.52) + pad * 2
+        rows_right = panel_x0 - pad * 2
+    else:
+        panel_x0 = right
+        rows_right = right
+
     y = oy
     # Fußzeilen unten reservieren: ggf. Pi-Status + Summary + OVERALL.
     foot_lines = 3 if has_sys else 2
@@ -197,11 +205,16 @@ def _render(
 
     # --- Kopf: roter Alarm-Banner oder Titel -------------------------------- #
     ok, warn, err = dashboard.counts
+    loud = dashboard.loud_count
     if err:
         word = "DIENST" if err == 1 else "DIENSTE"
         # Banner innerhalb der Safe-Area (damit der Text garantiert sichtbar ist).
         c.rect([ox, oy, right, oy + line_h + pad], "red", fill=True)
         c.text((x_glyph + pad, y), f"{err} {word} DOWN", font, "white")
+    elif loud:
+        word = "DIENST" if loud == 1 else "DIENSTE"
+        c.rect([ox, oy, right, oy + line_h + pad], "red", fill=True)
+        c.text((x_glyph + pad, y), f"{loud} {word} GESTOERT", font, "white")
     else:
         title = "HOMELAB STATUS" if not warn else f"HOMELAB  {warn} WARN"
         c.text((x_glyph, y), title, font, "black")
@@ -214,10 +227,14 @@ def _render(
         for r in items:
             if y > bottom - bottom_reserved - line_h:
                 break
-            color = "red" if r.status is Status.ERROR else "black"
-            _draw_glyph(c, x_glyph, y, gly, r.status, pad)
+            is_red = r.status is Status.ERROR or (
+                r.status is Status.WARN and r.loud
+            )
+            color = "red" if is_red else "black"
+            _draw_glyph(c, x_glyph, y, gly, r.status, pad, r.loud)
             c.text((x_name, y), r.name, font, color)
-            c.text((x_detail, y), _detail(r, now), font, color)
+            detail = _clip(c, _detail(r, now), font, rows_right - x_detail)
+            c.text((x_detail, y), detail, font, color)
             if draw_sparks:
                 _draw_spark(c, right - spark_w, y, r, line_h, spark_pw)
             y += line_h
@@ -240,7 +257,7 @@ def _render(
 
     # --- Optionales rechtes Info-Panel (Counter + Witz/Tech-History) -------- #
     if dashboard.side_panel is not None:
-        p_x0 = ox + int((right - ox) * 0.52) + pad * 2
+        p_x0 = panel_x0
         p_x1 = right
         p_y0 = oy + line_h
         p_y1 = bottom - pad  # rechte Spalte hat keine Fußzeile -> volle Höhe
@@ -306,6 +323,15 @@ def _draw_face(
     else:
         # trauriger Mund (obere Kurve)
         c.arc([cx - mw, cy + r * 0.10, cx + mw, cy + r * 0.90], 200, 340, color, lw)
+
+
+def _clip(c: BWRCanvas, text: str, font, max_w: int) -> str:
+    """Kürzt Text mit … auf die Pixelbreite (verhindert Überlappen)."""
+    if max_w <= 0 or not text or c.textlength(text, font) <= max_w:
+        return text
+    while text and c.textlength(text + "…", font) > max_w:
+        text = text[:-1]
+    return (text + "…") if text else ""
 
 
 def _wrap(c: BWRCanvas, text: str, font, max_w: int) -> List[str]:
@@ -379,12 +405,19 @@ def _draw_side_panel(
         y += step
 
 
-def _draw_glyph(c: BWRCanvas, x: int, y: int, size: int, status: Status, pad: int) -> None:
+def _draw_glyph(
+    c: BWRCanvas, x: int, y: int, size: int, status: Status, pad: int,
+    loud: bool = False,
+) -> None:
     box = [x, y + pad, x + size, y + size + pad]
     if status is Status.OK:
         c.rect(box, "black", fill=True)
     elif status is Status.WARN:
-        c.rect(box, "black", fill=False, width=max(2, size // 6))
+        # auffällige WARN: rotes, kräftiges Kästchen; stille WARN: schwarz dünn.
+        if loud:
+            c.rect(box, "red", fill=False, width=max(3, size // 4))
+        else:
+            c.rect(box, "black", fill=False, width=max(2, size // 6))
     elif status is Status.OFF:
         # Strich = deaktiviert/pausiert
         mid = y + pad + size // 2
@@ -417,7 +450,8 @@ def _detail(result: CheckResult, now: datetime) -> str:
         return result.down_for_str(now) or (result.message or "Fehler")
     if result.response_time_ms is not None:
         return result.response_time_str
-    return ""
+    # WARN ohne Antwortzeit (z.B. "seit 2h weg" / "instabil (12m)")
+    return result.message or ""
 
 
 def _load_font(size: int):

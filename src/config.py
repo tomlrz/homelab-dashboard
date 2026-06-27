@@ -137,6 +137,10 @@ class MonitoringConfig:
     #   sonst failure_threshold -> zählbasiert: erst nach N Fehlversuchen in Folge.
     fail_after_minutes: int = 0
     failure_threshold: int = 2
+    # Ab wann eine anhaltende Störung von "stiller" WARN zu "auffälliger" WARN
+    # wird (rot + Banner + einmaliger Push), aber noch nicht FAIL. 0 = aus.
+    # Nur im zeitbasierten Modus (fail_after_minutes > 0) relevant.
+    warn_loud_after_minutes: int = 0
     # Länge des angezeigten Verlaufsstreifens.
     history_length: int = 20
     # Zustandsdatei (down-seit, Verlauf, letzte Signatur).
@@ -294,6 +298,7 @@ def _parse_monitoring(raw: Optional[Dict[str, Any]]) -> MonitoringConfig:
     return MonitoringConfig(
         failure_threshold=max(1, int(raw.get("failure_threshold", 2))),
         fail_after_minutes=max(0, int(raw.get("fail_after_minutes", 0))),
+        warn_loud_after_minutes=max(0, int(raw.get("warn_loud_after_minutes", 0))),
         history_length=max(1, int(raw.get("history_length", 20))),
         state_file=str(raw.get("state_file", "state.json")),
         parallel=bool(raw.get("parallel", True)),

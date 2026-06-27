@@ -139,14 +139,15 @@ display:
 
 # --- Auswertung / Robustheit -------------------------------------------------
 monitoring:
-  # Wie lange darf ein Dienst weg sein, bevor es FAIL wird? Bis dahin: WARN.
-  # Variante A (zeitbasiert, empfohlen für geplante Downtime/Updates):
-  #   erst nach X Minuten Dauerstörung FAIL. Ein NAS-Update von ~20 Min bleibt
-  #   so durchgehend WARN -> kein Counter-Reset, kein Push. 0 = aus.
-  fail_after_minutes: 30
-  # Variante B (zählbasiert, Fallback – wird ignoriert wenn fail_after_minutes>0):
-  #   erst nach N Fehlversuchen in Folge FAIL. 1 = sofort.
-  failure_threshold: 2
+  # Drei Stufen, bis ein nicht erreichbarer Dienst als harter Ausfall gilt:
+  #   0 .. warn_loud_after_minutes    -> "stille" WARN (übersteht kurze Updates),
+  #                                      dezent, kein Push, kein Counter-Reset
+  #   warn_loud .. fail_after_minutes -> "auffällige" WARN: rot + Banner
+  #                                      "N DIENSTE GESTOERT" + EINMALIGER Push
+  #   ab fail_after_minutes           -> FAIL: rot, Counter -> 0, Push
+  warn_loud_after_minutes: 30     # ab wann WARN "laut" wird (0 = nie laut)
+  fail_after_minutes: 1440        # 1440 = 24 h; 0 = stattdessen zählbasiert
+  failure_threshold: 2            # Fallback, nur wenn fail_after_minutes = 0
   # Länge des Verlaufsstreifens (gespeicherte ok/fail-Punkte pro Dienst).
   history_length: 20
   # Datei für den Laufzeit-Zustand (down-seit, Verlauf). Relativ zur config.yaml.
@@ -161,8 +162,11 @@ monitoring:
 notify:
   # "none" (aus) | "ntfy" | "telegram" | "gotify"
   provider: "none"
-  # Wann benachrichtigen? "error" = Ausfall, "recovery" = wieder erreichbar.
-  notify_on: ["error", "recovery"]
+  # Wann benachrichtigen?
+  #   "error"    = harter Ausfall (FAIL)
+  #   "warn"     = anhaltende Störung (auffällige WARN, der eine "GESTOERT"-Push)
+  #   "recovery" = wieder erreichbar
+  notify_on: ["error", "warn", "recovery"]
 
   # --- ntfy (am einfachsten: App installieren, Topic abonnieren) ---
   # provider: "ntfy"

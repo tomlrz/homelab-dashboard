@@ -49,12 +49,16 @@ class Notifier:
                 title = f"DOWN: {tr.name}"
                 body = f"{tr.name} ist ausgefallen – {tr.message}"
                 priority = "high"
+            elif tr.kind == "warn":
+                title = f"GESTÖRT: {tr.name}"
+                body = f"{tr.name} ist gestört – {tr.message}"
+                priority = "high"
             else:  # recovery
                 title = f"OK: {tr.name}"
                 body = f"{tr.name} ist wieder erreichbar"
                 priority = "default"
             body += f"\nGesamt: {dashboard.summary_line}"
-            self._send(title, body, priority, is_error=(tr.kind == "error"))
+            self._send(title, body, priority, is_error=(tr.kind != "recovery"))
 
     # ------------------------------------------------------------------ #
     def _send(self, title: str, body: str, priority: str, is_error: bool) -> None:

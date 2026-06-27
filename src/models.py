@@ -55,6 +55,9 @@ class CheckResult:
     # Systemzeilen (Pi-Eigenstatus) werden separat dargestellt und zählen nicht
     # in den Gesamtstatus hinein.
     is_system: bool = False
+    # "Auffällige" WARN: Dienst ist schon länger gestört -> rot dargestellt +
+    # eigener Banner + (einmaliger) Push, aber noch kein FAIL (kein Counter-Reset).
+    loud: bool = False
 
     @property
     def response_time_str(self) -> str:
@@ -125,6 +128,13 @@ class Dashboard:
         )
 
     @property
+    def loud_count(self) -> int:
+        """Anzahl 'auffälliger' WARN (länger gestört, rot)."""
+        return sum(
+            1 for r in self.monitored if r.status is Status.WARN and r.loud
+        )
+
+    @property
     def all_results(self) -> List[CheckResult]:
         return [*self.hosts, *self.services, *self.system]
 
@@ -169,8 +179,9 @@ class Dashboard:
         Dient dem E-Ink-Renderer, um nur bei echter Änderung neu zu zeichnen.
         Antwortzeiten werden bewusst ignoriert (ändern sich ständig)."""
         parts = [self.overall.value]
-        # Alle Dienste (auch OFF) einbeziehen, damit ein Wechsel an/aus einen
-        # Refresh auslöst.
+        # Alle Dienste (auch OFF) einbeziehen, plus loud-Flag, damit ein Wechsel
+        # an/aus oder stille->auffällige WARN einen Refresh auslöst.
         for r in (*self.hosts, *self.services):
-            parts.append(f"{r.name}={r.status.value}")
+            flag = "!" if (r.status is Status.WARN and r.loud) else ""
+            parts.append(f"{r.name}={r.status.value}{flag}")
         return "|".join(parts)

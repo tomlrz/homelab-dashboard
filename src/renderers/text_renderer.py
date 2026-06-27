@@ -82,9 +82,13 @@ class TextRenderer(Renderer):
     @staticmethod
     def _banner(dashboard: Dashboard) -> str:
         ok, warn, err = dashboard.counts
+        loud = dashboard.loud_count
         if err:
             word = "DIENST" if err == 1 else "DIENSTE"
             return f"*** {err} {word} DOWN ***"
+        if loud:
+            word = "DIENST" if loud == 1 else "DIENSTE"
+            return f"!!! {loud} {word} GESTOERT !!!"
         if warn:
             return f"!!! {warn} WARN !!!"
         return ""

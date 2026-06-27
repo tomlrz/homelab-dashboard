@@ -147,7 +147,6 @@ class StateStore:
 
         for result in results:
             prev = checks.get(result.name, {})
-            prev_reported: Optional[str] = prev.get("reported_status")
             raw_is_error = result.status is Status.ERROR
 
             # --- Flapping-Schutz / Debounce ------------------------------ #
@@ -163,13 +162,18 @@ class StateStore:
 
             if raw_is_error:
                 if config.fail_after_minutes > 0:
-                    # Zeitbasierte Toleranz: erst nach X Minuten Dauerstörung FAIL,
-                    # vorher WARN. Übersteht geplante Downtime (z.B. NAS-Update).
+                    # Zeit-Phasen: stille WARN -> auffällige (loud) WARN -> FAIL.
                     started = _parse_iso(fail_since_iso) or now
                     mins = int((now - started).total_seconds() // 60)
                     if mins < config.fail_after_minutes:
                         result.status = Status.WARN
-                        result.message = f"instabil ({mins}m)"
+                        loud_after = config.warn_loud_after_minutes
+                        if loud_after > 0 and mins >= loud_after:
+                            result.loud = True
+                            result.message = f"seit {_fmt_dur(mins)}"
+                        else:
+                            result.message = f"instabil ({mins}m)"
+                    # sonst: bleibt ERROR (FAIL)
                 elif consecutive < config.failure_threshold:
                     # Zählbasierte Toleranz (Fallback): erst nach N Fehlversuchen.
                     result.status = Status.WARN
@@ -194,24 +198,29 @@ class StateStore:
             history = history[-config.history_length :]
             result.history = [bool(x) for x in history]
 
-            # --- Statuswechsel für Push erkennen ------------------------- #
-            reported = result.status.value
-            if prev_reported is not None and prev_reported != reported:
-                if reported == "error":
-                    transitions.append(
-                        Transition(result.name, "error", result.message or "down")
-                    )
-                elif prev_reported == "error" and reported in ("ok", "warn"):
-                    transitions.append(
-                        Transition(result.name, "recovery", result.message or "ok")
-                    )
+            # --- Alarmstufe + Statuswechsel für Push --------------------- #
+            #   0 = ok / stille WARN, 1 = auffällige (loud) WARN, 2 = FAIL
+            level = 2 if effective_is_error else (1 if result.loud else 0)
+            prev_level = int(prev.get("level", 0))
+            if level == 2 and prev_level < 2:
+                transitions.append(
+                    Transition(result.name, "error", result.message or "down")
+                )
+            elif level == 1 and prev_level == 0:
+                transitions.append(
+                    Transition(result.name, "warn", result.message or "gestört")
+                )
+            elif level == 0 and prev_level >= 1:
+                transitions.append(
+                    Transition(result.name, "recovery", "wieder erreichbar")
+                )
 
             checks[result.name] = {
-                "reported_status": reported,
                 "consecutive_failures": consecutive,
                 "fail_since": fail_since_iso,
                 "down_since": down_since_iso,
                 "history": history,
+                "level": level,
             }
 
         # Verwaiste Einträge (Dienst aus Config entfernt) aufräumen.
@@ -220,6 +229,17 @@ class StateStore:
             del checks[stale]
 
         return transitions
+
+
+def _fmt_dur(mins: float) -> str:
+    """Kompakte Dauer: '45m' / '3h' / '2d'."""
+    mins = int(mins)
+    if mins < 60:
+        return f"{mins}m"
+    hours = mins // 60
+    if hours < 24:
+        return f"{hours}h"
+    return f"{hours // 24}d"
 
 
 def _parse_iso(value: str) -> Optional[datetime]:
