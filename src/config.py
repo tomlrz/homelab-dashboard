@@ -61,10 +61,14 @@ class DisplayConfig:
     height: int = 122
     # E-Ink nur neu zeichnen, wenn sich der Status geändert hat (schont Panel).
     redraw_only_on_change: bool = True
-    # Heartbeat: spätestens nach so vielen Minuten einmal neu zeichnen, auch ohne
-    # Statuswechsel. So bleibt die angezeigte Uhrzeit aktuell -> man erkennt, dass
-    # das System noch läuft (eine alte Uhrzeit = es hängt). 0 = aus.
+    # Heartbeat: zusätzlich zum Refresh bei Statuswechsel das Bild auffrischen,
+    # damit man sieht, dass das System läuft (alte Uhrzeit = es hängt).
+    # Zwei Modi:
+    #   heartbeat_times: feste Uhrzeiten ["00:00","06:00",...] (bevorzugt)
+    #   heartbeat_minutes: Intervall in Minuten seit letztem Refresh (Fallback)
+    # Sind heartbeat_times gesetzt, wird heartbeat_minutes ignoriert. 0 = aus.
     heartbeat_minutes: int = 60
+    heartbeat_times: List[Tuple[int, int]] = field(default_factory=list)
     # Nur für renderer: "epaper" – echtes Waveshare-Display:
     #   epd_model: z.B. "epd7in5b_V2" (muss zu deinem Panel passen)
     #   waveshare_lib_path: Ordner, der das Paket "waveshare_epd" enthält
@@ -224,6 +228,26 @@ def _opt_int(value: Any) -> Optional[int]:
     return int(value) if value is not None else None
 
 
+def _parse_times(values: Any) -> List[Tuple[int, int]]:
+    """Wandelt ["00:00", "06:00", ...] in [(0,0), (6,0), ...]."""
+    if not values:
+        return []
+    if not isinstance(values, list):
+        raise ConfigError("heartbeat_times muss eine Liste sein, z.B. [\"06:00\"].")
+    out: List[Tuple[int, int]] = []
+    for v in values:
+        s = str(v).strip()
+        try:
+            hh, mm = s.split(":")
+            h, m = int(hh), int(mm)
+            if not (0 <= h < 24 and 0 <= m < 60):
+                raise ValueError
+        except ValueError:
+            raise ConfigError(f"Ungültige heartbeat_times-Zeit: {v!r} (Format HH:MM).")
+        out.append((h, m))
+    return out
+
+
 def _parse_display(raw: Optional[Dict[str, Any]]) -> DisplayConfig:
     raw = raw or {}
     renderer = str(raw.get("renderer", "text")).lower()
@@ -239,6 +263,7 @@ def _parse_display(raw: Optional[Dict[str, Any]]) -> DisplayConfig:
         height=int(raw.get("height", 122)),
         redraw_only_on_change=bool(raw.get("redraw_only_on_change", True)),
         heartbeat_minutes=max(0, int(raw.get("heartbeat_minutes", 60))),
+        heartbeat_times=_parse_times(raw.get("heartbeat_times")),
         epd_model=raw.get("epd_model"),
         waveshare_lib_path=raw.get("waveshare_lib_path"),
         margin=int(raw.get("margin", 0)),

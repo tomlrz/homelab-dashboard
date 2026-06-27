@@ -204,7 +204,9 @@ def _cycle(
     now = dashboard.timestamp
     signature = dashboard.state_signature()
     status_changed = signature != state.last_signature
-    heartbeat_due = state.heartbeat_due(now, config.display.heartbeat_minutes)
+    heartbeat_due = state.heartbeat_due(
+        now, config.display.heartbeat_minutes, config.display.heartbeat_times
+    )
     dashboard.changed = status_changed or heartbeat_due
 
     # Optionales rechtes Panel: Ausfall-Counter + Witz/Tech-History.

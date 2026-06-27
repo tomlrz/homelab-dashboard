@@ -16,9 +16,9 @@ from __future__ import annotations
 import json
 import logging
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 from config import MonitoringConfig
 from models import CheckResult, Status
@@ -74,15 +74,35 @@ class StateStore:
     def last_signature(self, value: str) -> None:
         self._data["signature"] = value
 
-    def heartbeat_due(self, now: datetime, heartbeat_minutes: int) -> bool:
-        """True, wenn seit dem letzten Zeichnen >= heartbeat_minutes vergangen
-        sind (oder noch nie gezeichnet wurde). 0 schaltet den Heartbeat aus."""
-        if heartbeat_minutes <= 0:
-            return False
+    def heartbeat_due(
+        self,
+        now: datetime,
+        heartbeat_minutes: int,
+        heartbeat_times: Optional[List[Tuple[int, int]]] = None,
+    ) -> bool:
+        """Ist ein Heartbeat-Refresh fällig?
+
+        - `heartbeat_times` (feste Uhrzeiten) hat Vorrang: fällig, wenn seit dem
+          letzten Zeichnen eine dieser Uhrzeiten überschritten wurde.
+        - sonst `heartbeat_minutes` (Intervall). 0/leer = aus.
+        Wurde noch nie gezeichnet, ist immer ein Refresh fällig."""
         last = self._data.get("last_render")
         last_dt = _parse_iso(last) if last else None
         if last_dt is None:
             return True
+
+        if heartbeat_times:
+            for h, m in heartbeat_times:
+                # jüngstes Vorkommen von HH:MM, das <= now liegt
+                occ = now.replace(hour=h, minute=m, second=0, microsecond=0)
+                if occ > now:
+                    occ -= timedelta(days=1)
+                if occ > last_dt:
+                    return True
+            return False
+
+        if heartbeat_minutes <= 0:
+            return False
         return (now - last_dt).total_seconds() >= heartbeat_minutes * 60
 
     def mark_rendered(self, now: datetime) -> None:

@@ -128,10 +128,13 @@ display:
   # E-Ink nur neu zeichnen, wenn sich der Status geändert hat (schont das Panel
   # und vermeidet ständiges Blinken). Antwortzeiten allein lösen kein Refresh aus.
   redraw_only_on_change: true
-  # Heartbeat: spätestens alle X Minuten einmal neu zeichnen, auch wenn sich
-  # nichts geändert hat. So bleibt die angezeigte Uhrzeit aktuell und du siehst,
-  # dass das System läuft (alte Uhrzeit = es hängt). 0 = aus.
-  # Beispiele: 60 = stündlich, 360 = 4x/Tag (alle 6 h), 720 = 2x/Tag.
+  # Heartbeat: das Bild auch ohne Statuswechsel auffrischen, damit man sieht,
+  # dass das System läuft (alte Uhrzeit = es hängt). Die 5-Min-Prüfung bleibt
+  # davon unberührt – nur das Neuzeichnen ist gemeint.
+  # Variante A (empfohlen): feste Uhrzeiten. Refresh kurz nach jeder Zeit.
+  heartbeat_times: ["00:00", "06:00", "12:00", "18:00"]
+  # Variante B (Fallback, wird ignoriert wenn heartbeat_times gesetzt ist):
+  # Intervall in Minuten seit letztem Refresh. 0 = aus.
   heartbeat_minutes: 360
 
 # --- Auswertung / Robustheit -------------------------------------------------
