@@ -177,10 +177,11 @@ def main(argv=None) -> int:
             logger.info("Beende Watch-Modus.")
             return 0
 
-    dashboard = _cycle(config, renderer, state, notifier)
-    # Exitcode spiegelt den Gesamtstatus (0=ok/warn, 1=error) – praktisch für
-    # systemd / Skripte, ohne die Anzeige zu verändern.
-    return 0 if dashboard.overall.value != "error" else 1
+    _cycle(config, renderer, state, notifier)
+    # Ein abgeschlossener Lauf ist ein Erfolg (Exit 0) – auch wenn ein Dienst
+    # down ist. Sonst würde die systemd-oneshot-Unit bei jedem echten Ausfall
+    # fälschlich als "failed" gelten. Der Zustand steht im Display/Log + Push.
+    return 0
 
 
 def _cycle(
