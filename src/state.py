@@ -154,14 +154,28 @@ class StateStore:
             consecutive = int(prev.get("consecutive_failures", 0))
             consecutive = consecutive + 1 if raw_is_error else 0
 
-            if raw_is_error and consecutive < config.failure_threshold:
-                # Noch nicht oft genug fehlgeschlagen -> als WARN "abfedern",
-                # damit ein einzelner Aussetzer nicht sofort rot wird.
-                result.status = Status.WARN
-                result.message = (
-                    f"instabil ({consecutive}/{config.failure_threshold}): "
-                    f"{result.message}"
-                )
+            # Zeitpunkt des ersten Fehlschlags dieser Störungs-Serie merken.
+            fail_since_iso: Optional[str] = (
+                prev.get("fail_since") if raw_is_error else None
+            )
+            if raw_is_error and not fail_since_iso:
+                fail_since_iso = now.isoformat()
+
+            if raw_is_error:
+                if config.fail_after_minutes > 0:
+                    # Zeitbasierte Toleranz: erst nach X Minuten Dauerstörung FAIL,
+                    # vorher WARN. Übersteht geplante Downtime (z.B. NAS-Update).
+                    started = _parse_iso(fail_since_iso) or now
+                    mins = int((now - started).total_seconds() // 60)
+                    if mins < config.fail_after_minutes:
+                        result.status = Status.WARN
+                        result.message = f"instabil ({mins}m)"
+                elif consecutive < config.failure_threshold:
+                    # Zählbasierte Toleranz (Fallback): erst nach N Fehlversuchen.
+                    result.status = Status.WARN
+                    result.message = (
+                        f"instabil ({consecutive}/{config.failure_threshold})"
+                    )
 
             effective_is_error = result.status is Status.ERROR
 
@@ -195,6 +209,7 @@ class StateStore:
             checks[result.name] = {
                 "reported_status": reported,
                 "consecutive_failures": consecutive,
+                "fail_since": fail_since_iso,
                 "down_since": down_since_iso,
                 "history": history,
             }

@@ -131,8 +131,11 @@ class NotifyConfig:
 class MonitoringConfig:
     """Verhalten der Auswertung (Robustheit/Zustand)."""
 
-    # Erst nach so vielen aufeinanderfolgenden Fehlschlägen wirklich FAIL melden
-    # (Flapping-Schutz). 1 = sofort.
+    # Toleranz, bevor ein nicht erreichbarer Dienst als FAIL gilt (vorher WARN):
+    #   fail_after_minutes > 0  -> zeitbasiert: erst nach X Minuten Dauerstörung
+    #                              FAIL (übersteht geplante Downtime / Updates).
+    #   sonst failure_threshold -> zählbasiert: erst nach N Fehlversuchen in Folge.
+    fail_after_minutes: int = 0
     failure_threshold: int = 2
     # Länge des angezeigten Verlaufsstreifens.
     history_length: int = 20
@@ -290,6 +293,7 @@ def _parse_monitoring(raw: Optional[Dict[str, Any]]) -> MonitoringConfig:
     raw = raw or {}
     return MonitoringConfig(
         failure_threshold=max(1, int(raw.get("failure_threshold", 2))),
+        fail_after_minutes=max(0, int(raw.get("fail_after_minutes", 0))),
         history_length=max(1, int(raw.get("history_length", 20))),
         state_file=str(raw.get("state_file", "state.json")),
         parallel=bool(raw.get("parallel", True)),
