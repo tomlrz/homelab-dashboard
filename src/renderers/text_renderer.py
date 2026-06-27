@@ -105,6 +105,8 @@ class TextRenderer(Renderer):
 
     @staticmethod
     def _detail(result: CheckResult, now: datetime) -> str:
+        if result.status is Status.OFF:
+            return "off"
         if result.status is Status.ERROR:
             # Bei Ausfall lieber die Dauer als die technische Meldung zeigen.
             down = result.down_for_str(now)

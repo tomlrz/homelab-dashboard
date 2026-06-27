@@ -21,15 +21,21 @@ class Status(str, Enum):
     OK = "ok"
     WARN = "warn"
     ERROR = "error"
+    OFF = "off"  # bewusst deaktiviert (Wartung) – zählt nicht in den Gesamtstatus
 
     @property
     def severity(self) -> int:
-        return {Status.OK: 0, Status.WARN: 1, Status.ERROR: 2}[self]
+        return {Status.OK: 0, Status.WARN: 1, Status.ERROR: 2, Status.OFF: -1}[self]
 
     @property
     def tag(self) -> str:
         """Kurzes, E-Ink-freundliches Label ohne Emojis."""
-        return {Status.OK: "[OK]", Status.WARN: "[WARN]", Status.ERROR: "[FAIL]"}[self]
+        return {
+            Status.OK: "[OK]",
+            Status.WARN: "[WARN]",
+            Status.ERROR: "[FAIL]",
+            Status.OFF: "[OFF]",
+        }[self]
 
 
 @dataclass
@@ -106,8 +112,17 @@ class Dashboard:
 
     @property
     def monitored(self) -> List[CheckResult]:
-        """Alle in den Gesamtstatus einfließenden Checks (ohne Systemzeilen)."""
-        return [*self.hosts, *self.services]
+        """Checks, die in den Gesamtstatus einfließen: ohne Systemzeilen und ohne
+        bewusst deaktivierte (OFF) Dienste."""
+        return [
+            r for r in (*self.hosts, *self.services) if r.status is not Status.OFF
+        ]
+
+    @property
+    def off_count(self) -> int:
+        return sum(
+            1 for r in (*self.hosts, *self.services) if r.status is Status.OFF
+        )
 
     @property
     def all_results(self) -> List[CheckResult]:
@@ -139,7 +154,10 @@ class Dashboard:
     @property
     def summary_line(self) -> str:
         ok, warn, err = self.counts
-        return f"{ok} OK · {warn} WARN · {err} FAIL"
+        line = f"{ok} OK · {warn} WARN · {err} FAIL"
+        if self.off_count:
+            line += f" · {self.off_count} OFF"
+        return line
 
     def sorted_for_display(self, results: List[CheckResult]) -> List[CheckResult]:
         """Fehler zuerst (stabil): error -> warn -> ok, Reihenfolge sonst erhalten."""
@@ -151,6 +169,8 @@ class Dashboard:
         Dient dem E-Ink-Renderer, um nur bei echter Änderung neu zu zeichnen.
         Antwortzeiten werden bewusst ignoriert (ändern sich ständig)."""
         parts = [self.overall.value]
-        for r in self.monitored:
+        # Alle Dienste (auch OFF) einbeziehen, damit ein Wechsel an/aus einen
+        # Refresh auslöst.
+        for r in (*self.hosts, *self.services):
             parts.append(f"{r.name}={r.status.value}")
         return "|".join(parts)

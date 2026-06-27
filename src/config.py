@@ -33,6 +33,9 @@ class Target:
 
     name: str
     type: str = "tcp"
+    # Auf false setzen, um einen Dienst bewusst zu pausieren (Wartung/Firmware):
+    # wird nicht geprüft, zeigt [OFF], zählt nicht als Ausfall, kein Push.
+    enabled: bool = True
     url: Optional[str] = None
     host: Optional[str] = None
     port: Optional[int] = None
@@ -190,6 +193,7 @@ def _parse_target(raw: Dict[str, Any], default_name: str = "") -> Target:
     target = Target(
         name=name,
         type=type_,
+        enabled=bool(raw.get("enabled", True)),
         url=raw.get("url"),
         host=raw.get("host"),
         port=int(raw["port"]) if raw.get("port") is not None else None,

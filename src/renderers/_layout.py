@@ -385,6 +385,10 @@ def _draw_glyph(c: BWRCanvas, x: int, y: int, size: int, status: Status, pad: in
         c.rect(box, "black", fill=True)
     elif status is Status.WARN:
         c.rect(box, "black", fill=False, width=max(2, size // 6))
+    elif status is Status.OFF:
+        # Strich = deaktiviert/pausiert
+        mid = y + pad + size // 2
+        c.line([x, mid, x + size, mid], "black", width=max(2, size // 6))
     else:  # ERROR
         c.rect(box, "red", fill=True)
 
@@ -407,6 +411,8 @@ def _draw_spark(
 
 
 def _detail(result: CheckResult, now: datetime) -> str:
+    if result.status is Status.OFF:
+        return "off"
     if result.status is Status.ERROR:
         return result.down_for_str(now) or (result.message or "Fehler")
     if result.response_time_ms is not None:

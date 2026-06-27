@@ -48,6 +48,10 @@ services:
     expected_status: [200, 399]
     # Optional: erreichbar, aber langsamer als X ms -> WARN (Frühwarnung).
     warn_response_ms: 2000
+    # Wartungs-/Pausenmodus: auf false setzen, um den Dienst bewusst zu pausieren
+    # (z.B. manuell abgeschaltet oder Firmware-Update). Dann wird er NICHT geprüft,
+    # zeigt [OFF], zählt nicht als Ausfall (Counter bleibt) und löst keinen Push aus.
+    # enabled: false
 
   - name: "Immich"
     type: "http"
@@ -127,7 +131,8 @@ display:
   # Heartbeat: spätestens alle X Minuten einmal neu zeichnen, auch wenn sich
   # nichts geändert hat. So bleibt die angezeigte Uhrzeit aktuell und du siehst,
   # dass das System läuft (alte Uhrzeit = es hängt). 0 = aus.
-  heartbeat_minutes: 60
+  # Beispiele: 60 = stündlich, 360 = 4x/Tag (alle 6 h), 720 = 2x/Tag.
+  heartbeat_minutes: 360
 
 # --- Auswertung / Robustheit -------------------------------------------------
 monitoring:

@@ -49,6 +49,11 @@ def run_check(target: Target) -> CheckResult:
     Diese Funktion ist der einzige Einstiegspunkt von außen und garantiert,
     dass niemals eine Exception nach oben durchschlägt.
     """
+    # Bewusst deaktivierte Dienste werden gar nicht erst geprüft.
+    if not target.enabled:
+        return CheckResult(
+            name=target.name, status=Status.OFF, message="deaktiviert (Wartung)"
+        )
     try:
         if target.type in ("http", "https"):
             return _check_http(target)
